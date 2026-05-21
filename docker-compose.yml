@@ -6,15 +6,13 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "app_user", "-papp_password"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER}", "-p${DB_PASSWORD}"]
       timeout: 5s
       retries: 5
       interval: 5s
@@ -22,14 +20,16 @@ services:
       - net_private
 
   api:
-    image: golang:1.22-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
     container_name: pm_api
     restart: always
     ports:
       - "8080:8080"
     volumes:
-      - .:/go/src/app
-    working_dir: /go/src/app
+      - .:/app
     environment:
       - DB_HOST=mysql_db
       - DB_PORT=3306
@@ -37,7 +37,6 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
-    command: go run cmd/api/main.go
     depends_on:
       mysql_db:
         condition: service_healthy
