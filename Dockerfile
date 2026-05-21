@@ -1,5 +1,5 @@
 # base image
-FROM golang:1.22-alpine AS base
+FROM golang:1.26-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache git
 COPY go.mod go.sum ./
@@ -17,7 +17,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /project-manager-api src/main.go
 
 # final image for production
-FROM alpine:3.19 AS production
+FROM alpine:3.23 AS production
 RUN adduser -D appuser
 USER appuser
 WORKDIR /
