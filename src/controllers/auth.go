@@ -12,6 +12,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type cleanUser struct {
+	ID    uint   `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 type UserRepositoryInterface interface {
 	Create(user *models.User) error
 	FindByEmail(email string) (*models.User, error)
@@ -80,17 +86,23 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		Password: string(hashedPassword),
 	}
-
+	
 	if err := c.repo.Create(&newUser); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error": "Failed to save user"}`))
 		return
 	}
+	
+	userClean := cleanUser{
+		ID:    newUser.ID,
+		Name:  newUser.Name,
+		Email: newUser.Email,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newUser)
+	json.NewEncoder(w).Encode(userClean)
 }
 
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
@@ -125,9 +137,15 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userClean := cleanUser{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
+		"user_id": userClean.ID,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
@@ -143,6 +161,6 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"token": tokenString,
-		"user":  user,
+		"user":  userClean,
 	})
 }
