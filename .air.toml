@@ -2,8 +2,8 @@ root = "."
 tmp_dir = "/tmp/air"
 
 [build]
-  cmd = "CGO_ENABLED=0 GOOS=linux go build -o /tmp/air/main ./src/main.go"
-  bin = "/tmp/air/main"
+  cmd = "CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -o /tmp/air/main ./src"
+  entrypoint = "/tmp/air/main"
   
   include_ext = ["go", "tpl", "tmpl", "html"]
   exclude_dir = ["assets", "vendor", "testdata"]

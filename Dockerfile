@@ -14,7 +14,7 @@ CMD ["air"]
 # build image for production
 FROM base AS builder
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /project-manager-api src/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -o /project-manager-api ./src
 
 # final image for production
 FROM alpine:3.23 AS production
