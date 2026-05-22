@@ -35,7 +35,7 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	cleanPath := strings.Trim(r.URL.Path, "/")
 	parts := strings.Split(cleanPath, "/")
 
-	if parts[1] != "projects" {
+	if len(parts) < 2 || parts[1] != "projects" {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error": "Endpoint not found"}`))
 		return

@@ -24,11 +24,13 @@ func main() {
 
 	userRepo := repositories.NewUserRepository(DB)
 	projectRepo := repositories.NewProjectRepository(DB)
+	taskRepo := repositories.NewTaskRepository(DB)
 
 	authController := controllers.NewAuthController(userRepo)
 	projectController := controllers.NewProjectController(projectRepo)
+	taskController := controllers.NewTaskController(taskRepo)
 
-	appRouter := routes.SetupRoutes(authController, projectController)
+	appRouter := routes.SetupRoutes(authController, projectController, taskController)
 
 	serverAddr := ":8080"
 	log.Printf("API engine ready and listening on port %s", serverAddr)
