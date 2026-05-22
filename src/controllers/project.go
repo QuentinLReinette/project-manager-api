@@ -73,6 +73,10 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if r.Method == http.MethodGet {
+			c.getProject(w, projectID, userID)
+			return
+		}
 		if r.Method == http.MethodPut {
 			c.updateProject(w, r, projectID, userID)
 			return
@@ -214,4 +218,29 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "Participant successfully attached to project"}`))
+}
+
+func (c *ProjectController) getProject(w http.ResponseWriter, projectID uint, userID uint) {
+	project, err := c.repo.FindByID(projectID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error": "Project workspace target not found"}`))
+		return
+	}
+
+	isMember := project.OwnerID == userID
+	for _, p := range project.Participants {
+		if p.ID == userID {
+			isMember = true
+			break
+		}
+	}
+
+	if !isMember {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error": "Access denied"}`))
+		return
+	}
+
+	json.NewEncoder(w).Encode(project)
 }
