@@ -21,6 +21,9 @@ func SetupRoutes(authCtrl *controllers.AuthController, projectCtrl *controllers.
 	router.HandleFunc("/api/auth/register", authCtrl.Register)
 	router.HandleFunc("/api/auth/login", authCtrl.Login)
 
+	// protected User Endpoints (User list/search)
+	router.Handle("/api/users", middleware.AuthMiddleware(http.HandlerFunc(authCtrl.ListUsers)))
+
 	// protected Project Endpoints
 	router.Handle("/api/projects", middleware.AuthMiddleware(http.HandlerFunc(projectCtrl.Dispatch)))
 	router.Handle("/api/projects/", middleware.AuthMiddleware(http.HandlerFunc(projectCtrl.Dispatch)))

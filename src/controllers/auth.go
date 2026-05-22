@@ -21,6 +21,7 @@ type cleanUser struct {
 type UserRepositoryInterface interface {
 	Create(user *models.User) error
 	FindByEmail(email string) (*models.User, error)
+	Search(query string) ([]models.User, error)
 }
 
 type AuthController struct {
@@ -163,4 +164,49 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		"token": tokenString,
 		"user":  userClean,
 	})
+}
+
+// search registered users matching a query (minimum 3 characters)
+func (c *AuthController) ListUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(`{"error": "Method not allowed"}`))
+		return
+	}
+
+	query := r.URL.Query().Get("q")
+	if len(query) < 3 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "Search query 'q' must be at least 3 characters long"}`))
+		return
+	}
+
+	users, err := c.repo.Search(query)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Failed to search users"}`))
+		return
+	}
+
+	type cleanUserResponse struct {
+		ID    uint   `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+
+	cleanUsers := make([]cleanUserResponse, 0, len(users))
+	for _, u := range users {
+		cleanUsers = append(cleanUsers, cleanUserResponse{
+			ID:    u.ID,
+			Name:  u.Name,
+			Email: u.Email,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(cleanUsers)
 }

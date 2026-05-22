@@ -26,3 +26,9 @@ func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	}
 	return &user, nil
 }
+
+func (r *UserRepository) Search(query string) ([]models.User, error) {
+	var users []models.User
+	err := r.db.Where("name LIKE ? OR email LIKE ?", "%"+query+"%", "%"+query+"%").Find(&users).Error
+	return users, err
+}
