@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -17,9 +18,9 @@ type cleanUser struct {
 }
 
 type UserRepositoryInterface interface {
-	Create(user *models.User) error
-	FindByEmail(email string) (*models.User, error)
-	Search(query string) ([]models.User, error)
+	Create(ctx context.Context, user *models.User) error
+	FindByEmail(ctx context.Context, email string) (*models.User, error)
+	Search(ctx context.Context, query string) ([]models.User, error)
 }
 
 type AuthController struct {
@@ -58,7 +59,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingUser, err := c.repo.FindByEmail(req.Email)
+	existingUser, err := c.repo.FindByEmail(r.Context(), req.Email)
 	if err == nil && existingUser != nil {
 		utils.WriteError(w, http.StatusConflict, "Email already registered")
 		return
@@ -76,7 +77,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		Password: hashedPassword,
 	}
 
-	if err := c.repo.Create(&newUser); err != nil {
+	if err := c.repo.Create(r.Context(), &newUser); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to save user")
 		return
 	}
@@ -102,7 +103,7 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := c.repo.FindByEmail(req.Email)
+	user, err := c.repo.FindByEmail(r.Context(), req.Email)
 	if err != nil || user == nil {
 		utils.WriteError(w, http.StatusUnauthorized, "Invalid email or password")
 		return
@@ -144,7 +145,7 @@ func (c *AuthController) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := c.repo.Search(query)
+	users, err := c.repo.Search(r.Context(), query)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to search users")
 		return

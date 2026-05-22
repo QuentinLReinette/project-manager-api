@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"project-manager/src/middleware"
@@ -10,12 +11,12 @@ import (
 )
 
 type TaskRepoInterface interface {
-	Create(task *models.Task) error
-	FindByID(id uint) (*models.Task, error)
-	FindByProjectID(projectID uint, statusFilter models.TaskStatus) ([]models.Task, error)
-	Update(task *models.Task) error
-	Delete(id uint) error
-	IsUserMember(projectID uint, userID uint) (bool, error)
+	Create(ctx context.Context, task *models.Task) error
+	FindByID(ctx context.Context, id uint) (*models.Task, error)
+	FindByProjectID(ctx context.Context, projectID uint, statusFilter models.TaskStatus) ([]models.Task, error)
+	Update(ctx context.Context, task *models.Task) error
+	Delete(ctx context.Context, id uint) error
+	IsUserMember(ctx context.Context, projectID uint, userID uint) (bool, error)
 }
 
 type TaskController struct {
@@ -60,7 +61,7 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if r.Method == http.MethodGet {
-			c.getTask(w, taskID, userID)
+			c.getTask(w, r, taskID, userID)
 			return
 		}
 		if r.Method == http.MethodPut {
@@ -68,7 +69,7 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.Method == http.MethodDelete {
-			c.deleteTask(w, taskID, userID)
+			c.deleteTask(w, r, taskID, userID)
 			return
 		}
 		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -88,7 +89,7 @@ func (c *TaskController) listTasks(w http.ResponseWriter, r *http.Request, userI
 	pID, _ := strconv.ParseUint(pIDStr, 10, 32)
 	projectID := uint(pID)
 
-	isMember, err := c.repo.IsUserMember(projectID, userID)
+	isMember, err := c.repo.IsUserMember(r.Context(), projectID, userID)
 	if err != nil || !isMember {
 		utils.WriteError(w, http.StatusForbidden, "Access denied to this project workspace")
 		return
@@ -99,7 +100,7 @@ func (c *TaskController) listTasks(w http.ResponseWriter, r *http.Request, userI
 		return
 	}
 
-	tasks, err := c.repo.FindByProjectID(projectID, statusFilter)
+	tasks, err := c.repo.FindByProjectID(r.Context(), projectID, statusFilter)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch tasks")
 		return
@@ -119,7 +120,7 @@ func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	isMember, err := c.repo.IsUserMember(req.ProjectID, userID)
+	isMember, err := c.repo.IsUserMember(r.Context(), req.ProjectID, userID)
 	if err != nil || !isMember {
 		utils.WriteError(w, http.StatusForbidden, "Access denied to this project workspace")
 		return
@@ -132,7 +133,7 @@ func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, user
 		Status:      models.StatusTodo, // default fallback state
 	}
 
-	if err := c.repo.Create(&newTask); err != nil {
+	if err := c.repo.Create(r.Context(), &newTask); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to create task")
 		return
 	}
@@ -141,13 +142,13 @@ func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, user
 }
 
 func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, taskID uint, userID uint) {
-	task, err := c.repo.FindByID(taskID)
+	task, err := c.repo.FindByID(r.Context(), taskID)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Task not found")
 		return
 	}
 
-	isMember, err := c.repo.IsUserMember(task.ProjectID, userID)
+	isMember, err := c.repo.IsUserMember(r.Context(), task.ProjectID, userID)
 	if err != nil || !isMember {
 		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
@@ -174,7 +175,7 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 	}
 
 	if req.AssignedToID != nil {
-		isAssigneeValid, _ := c.repo.IsUserMember(task.ProjectID, *req.AssignedToID)
+		isAssigneeValid, _ := c.repo.IsUserMember(r.Context(), task.ProjectID, *req.AssignedToID)
 		if !isAssigneeValid {
 			utils.WriteError(w, http.StatusUnprocessableEntity, "Assignee must be an active participant of the project")
 			return
@@ -187,41 +188,41 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 	}
 	task.Description = req.Description
 
-	if err := c.repo.Update(task); err != nil {
+	if err := c.repo.Update(r.Context(), task); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update task")
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, task)
 }
 
-func (c *TaskController) deleteTask(w http.ResponseWriter, taskID uint, userID uint) {
-	task, err := c.repo.FindByID(taskID)
+func (c *TaskController) deleteTask(w http.ResponseWriter, r *http.Request, taskID uint, userID uint) {
+	task, err := c.repo.FindByID(r.Context(), taskID)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Task not found")
 		return
 	}
 
-	isMember, err := c.repo.IsUserMember(task.ProjectID, userID)
+	isMember, err := c.repo.IsUserMember(r.Context(), task.ProjectID, userID)
 	if err != nil || !isMember {
 		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
-	if err := c.repo.Delete(taskID); err != nil {
+	if err := c.repo.Delete(r.Context(), taskID); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete task")
 		return
 	}
 	utils.WriteMessage(w, http.StatusOK, "Task deleted successfully")
 }
 
-func (c *TaskController) getTask(w http.ResponseWriter, taskID uint, userID uint) {
-	task, err := c.repo.FindByID(taskID)
+func (c *TaskController) getTask(w http.ResponseWriter, r *http.Request, taskID uint, userID uint) {
+	task, err := c.repo.FindByID(r.Context(), taskID)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Task not found")
 		return
 	}
 
-	isMember, err := c.repo.IsUserMember(task.ProjectID, userID)
+	isMember, err := c.repo.IsUserMember(r.Context(), task.ProjectID, userID)
 	if err != nil || !isMember {
 		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return

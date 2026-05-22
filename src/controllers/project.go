@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"project-manager/src/middleware"
@@ -9,12 +10,12 @@ import (
 )
 
 type ProjectRepoInterface interface {
-	Create(project *models.Project) error
-	FindByID(id uint) (*models.Project, error)
-	FindAllForUser(userID uint) ([]models.Project, error)
-	Update(project *models.Project) error
-	Delete(id uint) error
-	AddParticipantByEmail(projectID uint, email string) error
+	Create(ctx context.Context, project *models.Project) error
+	FindByID(ctx context.Context, id uint) (*models.Project, error)
+	FindAllForUser(ctx context.Context, userID uint) ([]models.Project, error)
+	Update(ctx context.Context, project *models.Project) error
+	Delete(ctx context.Context, id uint) error
+	AddParticipantByEmail(ctx context.Context, projectID uint, email string) error
 }
 
 type ProjectController struct {
@@ -39,7 +40,7 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 
 	if len(parts) == 2 {
 		if r.Method == http.MethodGet {
-			c.listProjects(w, userID)
+			c.listProjects(w, r, userID)
 			return
 		}
 		if r.Method == http.MethodPost {
@@ -68,7 +69,7 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if r.Method == http.MethodGet {
-			c.getProject(w, projectID, userID)
+			c.getProject(w, r, projectID, userID)
 			return
 		}
 		if r.Method == http.MethodPut {
@@ -76,7 +77,7 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.Method == http.MethodDelete {
-			c.deleteProject(w, projectID, userID)
+			c.deleteProject(w, r, projectID, userID)
 			return
 		}
 		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -84,8 +85,8 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *ProjectController) listProjects(w http.ResponseWriter, userID uint) {
-	projects, err := c.repo.FindAllForUser(userID)
+func (c *ProjectController) listProjects(w http.ResponseWriter, r *http.Request, userID uint) {
+	projects, err := c.repo.FindAllForUser(r.Context(), userID)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve workspace items")
 		return
@@ -109,7 +110,7 @@ func (c *ProjectController) createProject(w http.ResponseWriter, r *http.Request
 		OwnerID:     userID,
 	}
 
-	if err := c.repo.Create(&newProject); err != nil {
+	if err := c.repo.Create(r.Context(), &newProject); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to execute database record creation")
 		return
 	}
@@ -118,7 +119,7 @@ func (c *ProjectController) createProject(w http.ResponseWriter, r *http.Request
 }
 
 func (c *ProjectController) updateProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
-	project, err := c.repo.FindByID(projectID)
+	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return
@@ -143,15 +144,15 @@ func (c *ProjectController) updateProject(w http.ResponseWriter, r *http.Request
 	}
 	project.Description = req.Description
 
-	if err := c.repo.Update(project); err != nil {
+	if err := c.repo.Update(r.Context(), project); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit modifications")
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, project)
 }
 
-func (c *ProjectController) deleteProject(w http.ResponseWriter, projectID uint, userID uint) {
-	project, err := c.repo.FindByID(projectID)
+func (c *ProjectController) deleteProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
+	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return
@@ -162,7 +163,7 @@ func (c *ProjectController) deleteProject(w http.ResponseWriter, projectID uint,
 		return
 	}
 
-	if err := c.repo.Delete(projectID); err != nil {
+	if err := c.repo.Delete(r.Context(), projectID); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to remove item")
 		return
 	}
@@ -170,7 +171,7 @@ func (c *ProjectController) deleteProject(w http.ResponseWriter, projectID uint,
 }
 
 func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
-	project, err := c.repo.FindByID(projectID)
+	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return
@@ -189,7 +190,7 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := c.repo.AddParticipantByEmail(projectID, req.Email); err != nil {
+	if err := c.repo.AddParticipantByEmail(r.Context(), projectID, req.Email); err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Target user email not registered inside application")
 		return
 	}
@@ -197,8 +198,8 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 	utils.WriteMessage(w, http.StatusOK, "Participant successfully attached to project")
 }
 
-func (c *ProjectController) getProject(w http.ResponseWriter, projectID uint, userID uint) {
-	project, err := c.repo.FindByID(projectID)
+func (c *ProjectController) getProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
+	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return

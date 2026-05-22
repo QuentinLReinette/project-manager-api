@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"project-manager/src/controllers"
 	"project-manager/src/middleware"
+	"project-manager/src/utils"
 )
 
 // register all application endpoints
@@ -12,9 +13,7 @@ func SetupRoutes(authCtrl *controllers.AuthController, projectCtrl *controllers.
 
 	// base sanity check
 	router.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message": "pong", "status": "running"}`))
+		utils.WriteJSON(w, http.StatusOK, map[string]string{"message": "pong", "status": "running"})
 	})
 
 	// public Auth Endpoints
