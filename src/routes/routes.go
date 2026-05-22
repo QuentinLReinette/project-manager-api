@@ -7,7 +7,7 @@ import (
 )
 
 // register all application endpoints
-func SetupRoutes(authCtrl *controllers.AuthController, projectCtrl *controllers.ProjectController, taskCtrl *controllers.TaskController) *http.ServeMux {
+func SetupRoutes(authCtrl *controllers.AuthController, projectCtrl *controllers.ProjectController, taskCtrl *controllers.TaskController) http.Handler {
 	router := http.NewServeMux()
 
 	// base sanity check
@@ -29,5 +29,5 @@ func SetupRoutes(authCtrl *controllers.AuthController, projectCtrl *controllers.
 	router.Handle("/api/tasks", middleware.AuthMiddleware(http.HandlerFunc(taskCtrl.Dispatch)))
 	router.Handle("/api/tasks/", middleware.AuthMiddleware(http.HandlerFunc(taskCtrl.Dispatch)))
 
-	return router
+	return middleware.CORSMiddleware(router)
 }
