@@ -11,7 +11,10 @@ This project was built as part of the recruitment process for the Mentor positio
 - **Language:** Go (1.26+)
 - **Database:** MySQL 8.0 (relational persistence)
 - **ORM:** GORM (Go Object Relational Mapping)
-- **Authentication:** JSON Web Tokens (JWT) & Bcrypt password hashing
+- **Authentication:** JWT (JSON Web Tokens) & Bcrypt password hashing
+- **Concurrency & Cancellation:** Request context propagation (`context.Context`) through to GORM queries for execution safety.
+- **Database Optimizations:** GORM connection pooling (Max Open/Idle connections config), optimized access-control queries, and database transactions for atomicity.
+- **Security & Middleware:** JWT authentication gate, request logging, and CORS middleware (handling options preflights for frontend integration).
 - **Development Tooling:** Air (hot-reload inside Docker)
 - **Containerization:** Docker & Docker Compose
 
@@ -43,7 +46,7 @@ To run this project, you need the following tools installed:
    cp .env.example .env
    ```
 
-   *Note: Ensure the environment values match your docker-compose settings.*
+   _Note: Ensure the environment values match your docker-compose settings._
 
 3. **Start the API and Database Containers:**
 
@@ -73,7 +76,7 @@ To run this project, you need the following tools installed:
    Expected response:
 
    ```json
-   {"message": "pong", "status": "running"}
+   { "message": "pong", "status": "running" }
    ```
 
 ---
