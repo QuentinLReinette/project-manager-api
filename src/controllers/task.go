@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"project-manager/src/middleware"
 	"project-manager/src/models"
+	"project-manager/src/utils"
 	"strconv"
 	"strings"
 )
@@ -27,14 +28,13 @@ func NewTaskController(repo TaskRepoInterface) *TaskController {
 }
 
 func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	userID, _ := r.Context().Value(middleware.UserIDKey).(uint)
 
 	cleanPath := strings.Trim(r.URL.Path, "/")
 	parts := strings.Split(cleanPath, "/")
 
 	if len(parts) < 2 || parts[1] != "tasks" {
-		w.WriteHeader(http.StatusNotFound)
+		utils.WriteError(w, http.StatusNotFound, "Endpoint not found")
 		return
 	}
 
@@ -48,7 +48,7 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			c.createTask(w, r, userID)
 			return
 		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
@@ -56,8 +56,7 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 3 && parts[1] == "tasks" {
 		idVal, err := strconv.ParseUint(parts[2], 10, 32)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error": "Invalid task identifier"}`))
+			utils.WriteError(w, http.StatusBadRequest, "Invalid task identifier")
 			return
 		}
 		taskID := uint(idVal)
@@ -74,7 +73,7 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			c.deleteTask(w, taskID, userID)
 			return
 		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 }
@@ -84,8 +83,7 @@ func (c *TaskController) listTasks(w http.ResponseWriter, r *http.Request, userI
 	statusFilter := models.TaskStatus(r.URL.Query().Get("status")) // optional filter: todo, in_progress, done
 
 	if pIDStr == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Missing required project_id query parameter"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Missing required project_id query parameter")
 		return
 	}
 
@@ -94,24 +92,21 @@ func (c *TaskController) listTasks(w http.ResponseWriter, r *http.Request, userI
 
 	isMember, err := c.repo.IsUserMember(projectID, userID)
 	if err != nil || !isMember {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied to this project workspace"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied to this project workspace")
 		return
 	}
 
 	if statusFilter != "" && !statusFilter.IsValid() {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Invalid status query filter. Must be 'todo', 'in_progress', or 'done'"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Invalid status query filter. Must be 'todo', 'in_progress', or 'done'")
 		return
 	}
 
 	tasks, err := c.repo.FindByProjectID(projectID, statusFilter)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to fetch tasks"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch tasks")
 		return
 	}
-	json.NewEncoder(w).Encode(tasks)
+	utils.WriteJSON(w, http.StatusOK, tasks)
 }
 
 func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, userID uint) {
@@ -122,15 +117,13 @@ func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, user
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Title == "" || req.ProjectID == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Invalid payload. Title and project_id are required"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Invalid payload. Title and project_id are required")
 		return
 	}
 
 	isMember, err := c.repo.IsUserMember(req.ProjectID, userID)
 	if err != nil || !isMember {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied to this project workspace"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied to this project workspace")
 		return
 	}
 
@@ -142,27 +135,23 @@ func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, user
 	}
 
 	if err := c.repo.Create(&newTask); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to create task"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to create task")
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newTask)
+	utils.WriteJSON(w, http.StatusCreated, newTask)
 }
 
 func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, taskID uint, userID uint) {
 	task, err := c.repo.FindByID(taskID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Task not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Task not found")
 		return
 	}
 
 	isMember, err := c.repo.IsUserMember(task.ProjectID, userID)
 	if err != nil || !isMember {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
@@ -174,15 +163,13 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Invalid request payload"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	if req.Status != "" {
 		if !req.Status.IsValid() {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte(`{"error": "Status must be 'todo', 'in_progress', or 'done'"}`))
+			utils.WriteError(w, http.StatusUnprocessableEntity, "Status must be 'todo', 'in_progress', or 'done'")
 			return
 		}
 		task.Status = req.Status
@@ -191,8 +178,7 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 	if req.AssignedToID != nil {
 		isAssigneeValid, _ := c.repo.IsUserMember(task.ProjectID, *req.AssignedToID)
 		if !isAssigneeValid {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte(`{"error": "Assignee must be an active participant of the project"}`))
+			utils.WriteError(w, http.StatusUnprocessableEntity, "Assignee must be an active participant of the project")
 			return
 		}
 		task.AssignedToID = req.AssignedToID
@@ -204,51 +190,44 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 	task.Description = req.Description
 
 	if err := c.repo.Update(task); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to update task"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update task")
 		return
 	}
-	json.NewEncoder(w).Encode(task)
+	utils.WriteJSON(w, http.StatusOK, task)
 }
 
 func (c *TaskController) deleteTask(w http.ResponseWriter, taskID uint, userID uint) {
 	task, err := c.repo.FindByID(taskID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Task not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Task not found")
 		return
 	}
 
 	isMember, err := c.repo.IsUserMember(task.ProjectID, userID)
 	if err != nil || !isMember {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
 	if err := c.repo.Delete(taskID); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to delete task"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete task")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Task deleted successfully"}`))
+	utils.WriteMessage(w, http.StatusOK, "Task deleted successfully")
 }
 
 func (c *TaskController) getTask(w http.ResponseWriter, taskID uint, userID uint) {
 	task, err := c.repo.FindByID(taskID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Task not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Task not found")
 		return
 	}
 
 	isMember, err := c.repo.IsUserMember(task.ProjectID, userID)
 	if err != nil || !isMember {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
-	json.NewEncoder(w).Encode(task)
+	utils.WriteJSON(w, http.StatusOK, task)
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"project-manager/src/middleware"
 	"project-manager/src/models"
+	"project-manager/src/utils"
 	"strconv"
 	"strings"
 )
@@ -28,7 +29,6 @@ func NewProjectController(repo ProjectRepoInterface) *ProjectController {
 
 // clean up trailing slashes and handle explicit sub-routing
 func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	userID, _ := r.Context().Value(middleware.UserIDKey).(uint)
 
 	// clean up path: /api/projects/1/participants -> ["api", "projects", "1", "participants"]
@@ -36,8 +36,7 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(cleanPath, "/")
 
 	if len(parts) < 2 || parts[1] != "projects" {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Endpoint not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Endpoint not found")
 		return
 	}
 
@@ -50,15 +49,14 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			c.createProject(w, r, userID)
 			return
 		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	if len(parts) >= 3 {
 		idVal, err := strconv.ParseUint(parts[2], 10, 32)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error": "Invalid project identifier"}`))
+			utils.WriteError(w, http.StatusBadRequest, "Invalid project identifier")
 			return
 		}
 		projectID := uint(idVal)
@@ -66,7 +64,7 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 		// POST /api/projects/{id}/participants
 		if len(parts) == 4 && parts[3] == "participants" {
 			if r.Method != http.MethodPost {
-				w.WriteHeader(http.StatusMethodNotAllowed)
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 				return
 			}
 			c.addParticipant(w, r, projectID, userID)
@@ -85,7 +83,7 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			c.deleteProject(w, projectID, userID)
 			return
 		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 }
@@ -93,11 +91,10 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 func (c *ProjectController) listProjects(w http.ResponseWriter, userID uint) {
 	projects, err := c.repo.FindAllForUser(userID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to retrieve workspace items"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve workspace items")
 		return
 	}
-	json.NewEncoder(w).Encode(projects)
+	utils.WriteJSON(w, http.StatusOK, projects)
 }
 
 func (c *ProjectController) createProject(w http.ResponseWriter, r *http.Request, userID uint) {
@@ -106,8 +103,7 @@ func (c *ProjectController) createProject(w http.ResponseWriter, r *http.Request
 		Description string `json:"description"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Title == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Invalid payload. Title is required"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Invalid payload. Title is required")
 		return
 	}
 
@@ -118,26 +114,22 @@ func (c *ProjectController) createProject(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := c.repo.Create(&newProject); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to execute database record creation"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to execute database record creation")
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newProject)
+	utils.WriteJSON(w, http.StatusCreated, newProject)
 }
 
 func (c *ProjectController) updateProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(projectID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Project workspace target not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return
 	}
 
 	if project.OwnerID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
@@ -146,8 +138,7 @@ func (c *ProjectController) updateProject(w http.ResponseWriter, r *http.Request
 		Description string `json:"description"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Invalid modification updates"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Invalid modification updates")
 		return
 	}
 
@@ -157,47 +148,40 @@ func (c *ProjectController) updateProject(w http.ResponseWriter, r *http.Request
 	project.Description = req.Description
 
 	if err := c.repo.Update(project); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to commit modifications"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit modifications")
 		return
 	}
-	json.NewEncoder(w).Encode(project)
+	utils.WriteJSON(w, http.StatusOK, project)
 }
 
 func (c *ProjectController) deleteProject(w http.ResponseWriter, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(projectID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Project workspace target not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return
 	}
 
 	if project.OwnerID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
 	if err := c.repo.Delete(projectID); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to remove item"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to remove item")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Project workspace wiped successfully"}`))
+	utils.WriteMessage(w, http.StatusOK, "Project workspace wiped successfully")
 }
 
 func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(projectID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Project workspace target not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return
 	}
 
 	if project.OwnerID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
@@ -205,26 +189,22 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 		Email string `json:"email"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Email parameter required"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Email parameter required")
 		return
 	}
 
 	if err := c.repo.AddParticipantByEmail(projectID, req.Email); err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Target user email not registered inside application"}`))
+		utils.WriteError(w, http.StatusNotFound, "Target user email not registered inside application")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "Participant successfully attached to project"}`))
+	utils.WriteMessage(w, http.StatusOK, "Participant successfully attached to project")
 }
 
 func (c *ProjectController) getProject(w http.ResponseWriter, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(projectID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Project workspace target not found"}`))
+		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
 		return
 	}
 
@@ -237,10 +217,9 @@ func (c *ProjectController) getProject(w http.ResponseWriter, projectID uint, us
 	}
 
 	if !isMember {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"error": "Access denied"}`))
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
 		return
 	}
 
-	json.NewEncoder(w).Encode(project)
+	utils.WriteJSON(w, http.StatusOK, project)
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"project-manager/src/models"
+	"project-manager/src/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -45,40 +46,30 @@ type LoginRequest struct {
 
 func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(`{"error": "Method not allowed"}`))
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Invalid request payload"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	if req.Name == "" || req.Email == "" || req.Password == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		w.Write([]byte(`{"error": "Missing required fields"}`))
+		utils.WriteError(w, http.StatusUnprocessableEntity, "Missing required fields")
 		return
 	}
 
 	existingUser, err := c.repo.FindByEmail(req.Email)
 	if err == nil && existingUser != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		w.Write([]byte(`{"error": "Email already registered"}`))
+		utils.WriteError(w, http.StatusConflict, "Email already registered")
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to process password"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to process password")
 		return
 	}
 
@@ -89,9 +80,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := c.repo.Create(&newUser); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to save user"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to save user")
 		return
 	}
 
@@ -101,40 +90,30 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		Email: newUser.Email,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(userClean)
+	utils.WriteJSON(w, http.StatusCreated, userClean)
 }
 
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(`{"error": "Method not allowed"}`))
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Invalid request payload"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	user, err := c.repo.FindByEmail(req.Email)
 	if err != nil || user == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "Invalid email or password"}`))
+		utils.WriteError(w, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "Invalid email or password"}`))
+		utils.WriteError(w, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
 
@@ -152,15 +131,11 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to generate token"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	utils.WriteJSON(w, http.StatusOK, map[string]any{
 		"token": tokenString,
 		"user":  userClean,
 	})
@@ -169,25 +144,19 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 // search registered users matching a query (minimum 3 characters)
 func (c *AuthController) ListUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(`{"error": "Method not allowed"}`))
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
 	query := r.URL.Query().Get("q")
 	if len(query) < 3 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Search query 'q' must be at least 3 characters long"}`))
+		utils.WriteError(w, http.StatusBadRequest, "Search query 'q' must be at least 3 characters long")
 		return
 	}
 
 	users, err := c.repo.Search(query)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Failed to search users"}`))
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to search users")
 		return
 	}
 
@@ -200,7 +169,5 @@ func (c *AuthController) ListUsers(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(cleanUsers)
+	utils.WriteJSON(w, http.StatusOK, cleanUsers)
 }
