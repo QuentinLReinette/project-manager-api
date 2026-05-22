@@ -87,14 +87,14 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		Password: string(hashedPassword),
 	}
-	
+
 	if err := c.repo.Create(&newUser); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error": "Failed to save user"}`))
 		return
 	}
-	
+
 	userClean := cleanUser{
 		ID:    newUser.ID,
 		Name:  newUser.Name,
@@ -191,15 +191,9 @@ func (c *AuthController) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type cleanUserResponse struct {
-		ID    uint   `json:"id"`
-		Name  string `json:"name"`
-		Email string `json:"email"`
-	}
-
-	cleanUsers := make([]cleanUserResponse, 0, len(users))
+	cleanUsers := make([]cleanUser, 0, len(users))
 	for _, u := range users {
-		cleanUsers = append(cleanUsers, cleanUserResponse{
+		cleanUsers = append(cleanUsers, cleanUser{
 			ID:    u.ID,
 			Name:  u.Name,
 			Email: u.Email,

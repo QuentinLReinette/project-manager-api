@@ -52,7 +52,7 @@ func (r *ProjectRepository) Delete(id uint) error {
 func (r *ProjectRepository) AddParticipantByEmail(projectID uint, email string) error {
 	var user models.User
 	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
-		return err 
+		return err
 	}
 
 	var project models.Project
