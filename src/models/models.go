@@ -4,6 +4,22 @@ import (
 	"time"
 )
 
+type TaskStatus string
+
+const (
+	StatusTodo       TaskStatus = "todo"
+	StatusInProgress TaskStatus = "in_progress"
+	StatusDone       TaskStatus = "done"
+)
+
+func (s TaskStatus) IsValid() bool {
+	switch s {
+	case StatusTodo, StatusInProgress, StatusDone:
+		return true
+	}
+	return false
+}
+
 type User struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `gorm:"size:100;not null" json:"name"`
@@ -26,13 +42,13 @@ type Project struct {
 }
 
 type Task struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	Title        string    `gorm:"size:255;not null" json:"title"`
-	Description  string    `gorm:"type:text" json:"description"`
-	Status       string    `gorm:"size:50;default:'todo';not null" json:"status"`
-	ProjectID    uint      `gorm:"not null" json:"project_id"`
-	AssignedToID *uint     `gorm:"default:null" json:"assigned_to_id"`
-	AssignedTo   *User     `gorm:"foreignKey:AssignedToID" json:"assigned_to,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	Title        string     `gorm:"size:255;not null" json:"title"`
+	Description  string     `gorm:"type:text" json:"description"`
+	Status       TaskStatus `gorm:"size:50;default:'todo';not null" json:"status"`
+	ProjectID    uint       `gorm:"not null" json:"project_id"`
+	AssignedToID *uint      `gorm:"default:null" json:"assigned_to_id"`
+	AssignedTo   *User      `gorm:"foreignKey:AssignedToID" json:"assigned_to,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }

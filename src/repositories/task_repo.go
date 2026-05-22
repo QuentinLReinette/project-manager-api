@@ -27,7 +27,7 @@ func (r *TaskRepository) FindByID(id uint) (*models.Task, error) {
 	return &task, nil
 }
 
-func (r *TaskRepository) FindByProjectID(projectID uint, statusFilter string) ([]models.Task, error) {
+func (r *TaskRepository) FindByProjectID(projectID uint, statusFilter models.TaskStatus) ([]models.Task, error) {
 	var tasks []models.Task
 	query := r.db.Where("project_id = ?", projectID).Preload("AssignedTo")
 
@@ -49,21 +49,13 @@ func (r *TaskRepository) Delete(id uint) error {
 
 // check if a user is part of a project
 func (r *TaskRepository) IsUserMember(projectID uint, userID uint) (bool, error) {
-	var project models.Project
-	err := r.db.Preload("Participants").First(&project, projectID).Error
+	var count int64
+	err := r.db.Model(&models.Project{}).
+		Joins("LEFT JOIN project_participants ON project_participants.project_id = projects.id").
+		Where("projects.id = ? AND (projects.owner_id = ? OR project_participants.user_id = ?)", projectID, userID, userID).
+		Count(&count).Error
 	if err != nil {
 		return false, err
 	}
-
-	if project.OwnerID == userID {
-		return true, nil
-	}
-
-	for _, participant := range project.Participants {
-		if participant.ID == userID {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return count > 0, nil
 }

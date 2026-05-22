@@ -12,7 +12,7 @@ import (
 type TaskRepoInterface interface {
 	Create(task *models.Task) error
 	FindByID(id uint) (*models.Task, error)
-	FindByProjectID(projectID uint, statusFilter string) ([]models.Task, error)
+	FindByProjectID(projectID uint, statusFilter models.TaskStatus) ([]models.Task, error)
 	Update(task *models.Task) error
 	Delete(id uint) error
 	IsUserMember(projectID uint, userID uint) (bool, error)
@@ -81,7 +81,7 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 
 func (c *TaskController) listTasks(w http.ResponseWriter, r *http.Request, userID uint) {
 	pIDStr := r.URL.Query().Get("project_id")
-	statusFilter := r.URL.Query().Get("status") // optional filter: todo, in_progress, done
+	statusFilter := models.TaskStatus(r.URL.Query().Get("status")) // optional filter: todo, in_progress, done
 
 	if pIDStr == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -96,6 +96,12 @@ func (c *TaskController) listTasks(w http.ResponseWriter, r *http.Request, userI
 	if err != nil || !isMember {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte(`{"error": "Access denied to this project workspace"}`))
+		return
+	}
+
+	if statusFilter != "" && !statusFilter.IsValid() {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "Invalid status query filter. Must be 'todo', 'in_progress', or 'done'"}`))
 		return
 	}
 
@@ -132,7 +138,7 @@ func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, user
 		Title:       req.Title,
 		Description: req.Description,
 		ProjectID:   req.ProjectID,
-		Status:      "todo", // default fallback state
+		Status:      models.StatusTodo, // default fallback state
 	}
 
 	if err := c.repo.Create(&newTask); err != nil {
@@ -161,10 +167,10 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 	}
 
 	var req struct {
-		Title        string `json:"title"`
-		Description  string `json:"description"`
-		Status       string `json:"status"`
-		AssignedToID *uint  `json:"assigned_to_id"`
+		Title        string            `json:"title"`
+		Description  string            `json:"description"`
+		Status       models.TaskStatus `json:"status"`
+		AssignedToID *uint             `json:"assigned_to_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -174,13 +180,12 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 	}
 
 	if req.Status != "" {
-		s := req.Status
-		if s != "todo" && s != "in_progress" && s != "done" {
+		if !req.Status.IsValid() {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			w.Write([]byte(`{"error": "Status must be 'todo', 'in_progress', or 'done'"}`))
 			return
 		}
-		task.Status = s
+		task.Status = req.Status
 	}
 
 	if req.AssignedToID != nil {

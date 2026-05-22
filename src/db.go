@@ -44,5 +44,14 @@ func ConnectDatabase() {
 		log.Fatal("Critical error: Could not connect to database after 5 attempts: ", err)
 	}
 
-	log.Println("Successfully connected to MySQL!")
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatal("Failed to configure database connection pool: ", err)
+	}
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxIdleTime(15 * time.Minute)
+
+	log.Println("Successfully connected to MySQL")
 }
