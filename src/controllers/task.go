@@ -52,7 +52,7 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// PUT or DELETE /api/tasks/{id}
+	// GET, PUT or DELETE /api/tasks/{id}
 	if len(parts) == 3 && parts[1] == "tasks" {
 		idVal, err := strconv.ParseUint(parts[2], 10, 32)
 		if err != nil {
@@ -62,6 +62,10 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 		}
 		taskID := uint(idVal)
 
+		if r.Method == http.MethodGet {
+			c.getTask(w, taskID, userID)
+			return
+		}
 		if r.Method == http.MethodPut {
 			c.updateTask(w, r, taskID, userID)
 			return
@@ -224,4 +228,22 @@ func (c *TaskController) deleteTask(w http.ResponseWriter, taskID uint, userID u
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "Task deleted successfully"}`))
+}
+
+func (c *TaskController) getTask(w http.ResponseWriter, taskID uint, userID uint) {
+	task, err := c.repo.FindByID(taskID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error": "Task not found"}`))
+		return
+	}
+
+	isMember, err := c.repo.IsUserMember(task.ProjectID, userID)
+	if err != nil || !isMember {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error": "Access denied"}`))
+		return
+	}
+
+	json.NewEncoder(w).Encode(task)
 }
