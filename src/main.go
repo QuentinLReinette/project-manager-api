@@ -23,10 +23,12 @@ func main() {
 	log.Println("Database migration completed successfully.")
 
 	userRepo := repositories.NewUserRepository(DB)
+	projectRepo := repositories.NewProjectRepository(DB)
 
 	authController := controllers.NewAuthController(userRepo)
+	projectController := controllers.NewProjectController(projectRepo)
 
-	appRouter := routes.SetupRoutes(authController)
+	appRouter := routes.SetupRoutes(authController, projectController)
 
 	serverAddr := ":8080"
 	log.Printf("API engine ready and listening on port %s", serverAddr)
