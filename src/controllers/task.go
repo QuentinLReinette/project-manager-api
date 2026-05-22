@@ -7,7 +7,6 @@ import (
 	"project-manager/src/models"
 	"project-manager/src/utils"
 	"strconv"
-	"strings"
 )
 
 type TaskRepoInterface interface {
@@ -30,8 +29,8 @@ func NewTaskController(repo TaskRepoInterface) *TaskController {
 func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middleware.UserIDKey).(uint)
 
-	cleanPath := strings.Trim(r.URL.Path, "/")
-	parts := strings.Split(cleanPath, "/")
+	// /api/projects/1/participants -> ["api", "projects", "1", "participants"]
+	parts := splitURLPath(r.URL.Path)
 
 	if len(parts) < 2 || parts[1] != "tasks" {
 		utils.WriteError(w, http.StatusNotFound, "Endpoint not found")
@@ -54,12 +53,11 @@ func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 
 	// GET, PUT or DELETE /api/tasks/{id}
 	if len(parts) == 3 && parts[1] == "tasks" {
-		idVal, err := strconv.ParseUint(parts[2], 10, 32)
+		taskID, err := parseURLID(r.URL.Path, 2)
 		if err != nil {
 			utils.WriteError(w, http.StatusBadRequest, "Invalid task identifier")
 			return
 		}
-		taskID := uint(idVal)
 
 		if r.Method == http.MethodGet {
 			c.getTask(w, taskID, userID)

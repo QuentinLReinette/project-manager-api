@@ -6,8 +6,6 @@ import (
 	"project-manager/src/middleware"
 	"project-manager/src/models"
 	"project-manager/src/utils"
-	"strconv"
-	"strings"
 )
 
 type ProjectRepoInterface interface {
@@ -31,9 +29,8 @@ func NewProjectController(repo ProjectRepoInterface) *ProjectController {
 func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middleware.UserIDKey).(uint)
 
-	// clean up path: /api/projects/1/participants -> ["api", "projects", "1", "participants"]
-	cleanPath := strings.Trim(r.URL.Path, "/")
-	parts := strings.Split(cleanPath, "/")
+	// /api/projects/1/participants -> ["api", "projects", "1", "participants"]
+	parts := splitURLPath(r.URL.Path)
 
 	if len(parts) < 2 || parts[1] != "projects" {
 		utils.WriteError(w, http.StatusNotFound, "Endpoint not found")
@@ -54,12 +51,11 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(parts) >= 3 {
-		idVal, err := strconv.ParseUint(parts[2], 10, 32)
+		projectID, err := parseURLID(r.URL.Path, 2)
 		if err != nil {
 			utils.WriteError(w, http.StatusBadRequest, "Invalid project identifier")
 			return
 		}
-		projectID := uint(idVal)
 
 		// POST /api/projects/{id}/participants
 		if len(parts) == 4 && parts[3] == "participants" {

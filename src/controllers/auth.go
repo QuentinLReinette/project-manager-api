@@ -3,13 +3,10 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
-	"os"
-	"time"
 
 	"project-manager/src/models"
 	"project-manager/src/utils"
 
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -67,7 +64,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := hashPassword(req.Password)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to process password")
 		return
@@ -76,7 +73,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 	newUser := models.User{
 		Name:     req.Name,
 		Email:    req.Email,
-		Password: string(hashedPassword),
+		Password: hashedPassword,
 	}
 
 	if err := c.repo.Create(&newUser); err != nil {
@@ -111,8 +108,7 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
-	if err != nil {
+	if !checkPasswordHash(req.Password, user.Password) {
 		utils.WriteError(w, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
@@ -123,13 +119,7 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		Email: user.Email,
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userClean.ID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(jwtSecret))
+	tokenString, err := utils.GenerateToken(userClean.ID)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
@@ -170,4 +160,16 @@ func (c *AuthController) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, http.StatusOK, cleanUsers)
+}
+
+// hash a password using bcrypt
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+// check if a password matches a hash
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
