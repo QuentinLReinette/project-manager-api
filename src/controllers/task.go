@@ -29,7 +29,7 @@ func NewTaskController(repo TaskRepoInterface) *TaskController {
 func (c *TaskController) Dispatch(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middleware.UserIDKey).(uint)
 
-	// /api/projects/1/participants -> ["api", "projects", "1", "participants"]
+	// /api/tasks/1 -> ["api", "tasks", "1"]
 	parts := splitURLPath(r.URL.Path)
 
 	if len(parts) < 2 || parts[1] != "tasks" {

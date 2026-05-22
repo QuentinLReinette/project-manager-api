@@ -12,7 +12,7 @@ type contextKey string
 
 const UserIDKey contextKey = "userID"
 
-// enforces valid JWT presence and exposes the user ID to downstream handlers
+// enforce valid JWT presence and expose the user ID to downstream handlers
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")

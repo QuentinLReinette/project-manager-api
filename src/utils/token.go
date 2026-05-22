@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// GenerateToken creates a signed JWT for the given user ID
+// create a signed JWT for the given user ID
 func GenerateToken(userID uint) (string, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -18,7 +18,7 @@ func GenerateToken(userID uint) (string, error) {
 	return token.SignedString([]byte(jwtSecret))
 }
 
-// ValidateToken parses and validates a JWT string, returning the embedded user ID if valid
+// parse & validate a JWT string, returning the embedded user ID if valid
 func ValidateToken(tokenString string) (uint, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

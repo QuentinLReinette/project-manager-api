@@ -28,7 +28,7 @@ func (r *ProjectRepository) FindByID(id uint) (*models.Project, error) {
 	return &project, nil
 }
 
-// return projects where the user is the owner or a participant
+// return the projects a user belongs to
 func (r *ProjectRepository) FindAllForUser(userID uint) ([]models.Project, error) {
 	var projects []models.Project
 
