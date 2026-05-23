@@ -188,6 +188,26 @@ func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, userClean)
 }
 
+// clear the authentication cookie and log out the user
+func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1, // deletes the cookie immediately
+	})
+
+	utils.WriteMessage(w, http.StatusOK, "Successfully logged out")
+}
+
 // search registered users matching a query (minimum 3 characters)
 func (c *AuthController) ListUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

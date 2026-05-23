@@ -24,6 +24,7 @@ The API has full CORS support enabled. Preflight `OPTIONS` requests are handled 
 | **Health**   | GET    | `/ping`                           | Base API sanity check                                | No            |
 | **Auth**     | POST   | `/api/auth/register`              | Register a new user                                  | No            |
 | **Auth**     | POST   | `/api/auth/login`                 | Log in and set `token` cookie                        | No            |
+| **Auth**     | POST   | `/api/auth/logout`                | Log out and clear `token` cookie                     | No            |
 | **Auth**     | GET    | `/api/auth/me`                    | Get authenticated user profile                       | Yes           |
 | **Users**    | GET    | `/api/users?q={query}`            | Search users by name/email (min 3 chars)             | Yes           |
 | **Projects** | GET    | `/api/projects`                   | List all projects (owned or participated)            | Yes           |
@@ -127,6 +128,19 @@ The API has full CORS support enabled. Preflight `OPTIONS` requests are handled 
 
   - **Error Responses:**
     - `401 Unauthorized`: Authentication cookie missing, expired, or invalid.
+
+- **Logout (`POST /api/auth/logout`)**
+  - **Description:** Clears the HttpOnly `token` cookie by setting its expiration to the past.
+  - **Response (200 OK):**
+
+    ```json
+    {
+      "message": "Successfully logged out"
+    }
+    ```
+
+  - **Error Responses:**
+    - `405 Method Not Allowed`: Request method must be `POST`.
 
 ---
 
