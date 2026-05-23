@@ -9,9 +9,10 @@ For development/testing via tools like `curl` or Postman, you can pass the sessi
 
 ## CORS Support
 
-The API has full CORS support enabled. Preflight `OPTIONS` requests are handled and return a `204 No Content` status with the following CORS headers:
+The API has full CORS support enabled to support secure credentialed sharing with the frontend application. Preflight `OPTIONS` requests are handled and return a `204 No Content` status with the following CORS headers:
 
-- `Access-Control-Allow-Origin: *`
+- `Access-Control-Allow-Origin: {request_origin}` (reflects the request origin dynamically, e.g. `http://localhost:3000`)
+- `Access-Control-Allow-Credentials: true` (required for HTTP-only cookie storage and transmission)
 - `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
 - `Access-Control-Allow-Headers: Content-Type, Authorization`
 
