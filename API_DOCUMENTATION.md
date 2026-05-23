@@ -314,6 +314,7 @@ The API has full CORS support enabled to support secure credentialed sharing wit
     - `400 Bad Request`: Project identifier is invalid, or payload JSON is invalid / missing required fields (`email`).
     - `403 Forbidden`: Access denied (user is not the project Owner).
     - `404 Not Found`: Project workspace target not found, or the email address is not registered inside the application database.
+    - `409 Conflict`: User is already a participant of the project, or user is the owner of the project.
 
 ---
 

@@ -1,7 +1,14 @@
 package models
 
 import (
+	"errors"
 	"time"
+)
+
+var (
+	ErrUserNotFound          = errors.New("user not found")
+	ErrUserAlreadyParticipant = errors.New("user is already a participant")
+	ErrUserIsOwner           = errors.New("user is the owner of this project")
 )
 
 type TaskStatus string

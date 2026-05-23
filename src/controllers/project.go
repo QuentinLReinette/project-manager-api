@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"project-manager/src/middleware"
 	"project-manager/src/models"
@@ -191,7 +192,19 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := c.repo.AddParticipantByEmail(r.Context(), projectID, req.Email); err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Target user email not registered inside application")
+		if errors.Is(err, models.ErrUserAlreadyParticipant) {
+			utils.WriteError(w, http.StatusConflict, "User is already a participant of this project")
+			return
+		}
+		if errors.Is(err, models.ErrUserIsOwner) {
+			utils.WriteError(w, http.StatusConflict, "User is the owner of this project and cannot be added as a participant")
+			return
+		}
+		if errors.Is(err, models.ErrUserNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Target user email not registered inside application")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to add participant to project")
 		return
 	}
 
