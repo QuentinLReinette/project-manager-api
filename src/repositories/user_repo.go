@@ -28,6 +28,15 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 	return &user, nil
 }
 
+func (r *UserRepository) FindByID(ctx context.Context, id uint) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).First(&user, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) Search(ctx context.Context, query string) ([]models.User, error) {
 	var users []models.User
 	err := r.db.WithContext(ctx).Where("name LIKE ? OR email LIKE ?", "%"+query+"%", "%"+query+"%").Find(&users).Error

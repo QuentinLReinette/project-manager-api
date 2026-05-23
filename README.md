@@ -87,7 +87,7 @@ All endpoints are fully documented in a separate file for readability. You can f
 
 For a quick reference of the available endpoints, see below:
 
-- **Auth**: Registration (`POST /api/auth/register`), Login (`POST /api/auth/login`)
+- **Auth**: Registration (`POST /api/auth/register`), Login (`POST /api/auth/login`), Profile Info (`GET /api/auth/me`)
 - **Users**: Search (`GET /api/users?q={query}`)
 - **Projects**: List (`GET /api/projects`), Create (`POST /api/projects`), Detail (`GET /api/projects/{id}`), Update (`PUT /api/projects/{id}`), Delete (`DELETE /api/projects/{id}`), Add Participant (`POST /api/projects/{id}/participants`)
 - **Tasks**: List (`GET /api/tasks?project_id={id}`), Create (`POST /api/tasks`), Detail (`GET /api/tasks/{id}`), Update (`PUT /api/tasks/{id}`), Delete (`DELETE /api/tasks/{id}`)

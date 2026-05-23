@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"project-manager/src/middleware"
 	"project-manager/src/models"
 	"project-manager/src/utils"
 
@@ -20,6 +21,7 @@ type cleanUser struct {
 type UserRepositoryInterface interface {
 	Create(ctx context.Context, user *models.User) error
 	FindByEmail(ctx context.Context, email string) (*models.User, error)
+	FindByID(ctx context.Context, id uint) (*models.User, error)
 	Search(ctx context.Context, query string) ([]models.User, error)
 }
 
@@ -88,6 +90,22 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		Email: newUser.Email,
 	}
 
+	tokenString, err := utils.GenerateToken(newUser.ID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to generate session token")
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    tokenString,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   3600 * 24,
+	})
+
 	utils.WriteJSON(w, http.StatusCreated, userClean)
 }
 
@@ -126,10 +144,48 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    tokenString,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   3600 * 24,
+	})
+
 	utils.WriteJSON(w, http.StatusOK, map[string]any{
 		"token": tokenString,
 		"user":  userClean,
 	})
+}
+
+// retrieve details of the currently authenticated user
+func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(uint)
+	if !ok || userID == 0 {
+		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	user, err := c.repo.FindByID(r.Context(), userID)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, "User not found")
+		return
+	}
+
+	userClean := cleanUser{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
+	}
+
+	utils.WriteJSON(w, http.StatusOK, userClean)
 }
 
 // search registered users matching a query (minimum 3 characters)

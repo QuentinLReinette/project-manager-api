@@ -1,7 +1,9 @@
 # API Endpoint Documentation
 
-All endpoints (except Authentication) are protected and require a Bearer token in the `Authorization` header:
-`Authorization: Bearer {your_jwt_token}`
+All endpoints (except Public Authentication routes) are protected and require a valid JWT token. The API operates using secure `HttpOnly` cookies. Once authenticated, the browser automatically attaches the cookie to all requests.
+
+For development/testing via tools like `curl` or Postman, you can pass the session token using the `Cookie` header:
+`Cookie: token={your_jwt_token}`
 
 ---
 
@@ -21,7 +23,8 @@ The API has full CORS support enabled. Preflight `OPTIONS` requests are handled 
 | ------------ | ------ | --------------------------------- | ---------------------------------------------------- | ------------- |
 | **Health**   | GET    | `/ping`                           | Base API sanity check                                | No            |
 | **Auth**     | POST   | `/api/auth/register`              | Register a new user                                  | No            |
-| **Auth**     | POST   | `/api/auth/login`                 | Log in and receive a JWT token                       | No            |
+| **Auth**     | POST   | `/api/auth/login`                 | Log in and set `token` cookie                        | No            |
+| **Auth**     | GET    | `/api/auth/me`                    | Get authenticated user profile                       | Yes           |
 | **Users**    | GET    | `/api/users?q={query}`            | Search users by name/email (min 3 chars)             | Yes           |
 | **Projects** | GET    | `/api/projects`                   | List all projects (owned or participated)            | Yes           |
 | **Projects** | POST   | `/api/projects`                   | Create a new project workspace                       | Yes           |
@@ -57,7 +60,7 @@ The API has full CORS support enabled. Preflight `OPTIONS` requests are handled 
 ### 1. Authentication
 
 - **Register a new account (`POST /api/auth/register`)**
-  - **Description:** Registers a new user inside the application.
+  - **Description:** Registers a new user inside the application, issues a session JWT, and sets it in an HTTP-only `token` cookie.
   - **Payload:**
 
     ```json
@@ -84,7 +87,7 @@ The API has full CORS support enabled. Preflight `OPTIONS` requests are handled 
     - `422 Unprocessable Entity`: Required fields (`name`, `email`, `password`) are missing.
 
 - **Login (`POST /api/auth/login`)**
-  - **Description:** Authenticates a user and returns a JSON Web Token (JWT).
+  - **Description:** Authenticates a user, sets the session JWT in an HTTP-only `token` cookie, and returns the token in the JSON body response.
   - **Payload:**
 
     ```json
@@ -109,6 +112,21 @@ The API has full CORS support enabled. Preflight `OPTIONS` requests are handled 
 
   - **Error Responses:**
     - `401 Unauthorized`: Invalid email or password.
+
+- **Who Am I (`GET /api/auth/me`)**
+  - **Description:** Returns the currently authenticated user's details. Requires authentication (valid `token` cookie).
+  - **Response (200 OK):**
+
+    ```json
+    {
+      "id": 6,
+      "name": "Alice Ynov",
+      "email": "alice@ynov.com"
+    }
+    ```
+
+  - **Error Responses:**
+    - `401 Unauthorized`: Authentication cookie missing, expired, or invalid.
 
 ---
 
