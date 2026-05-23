@@ -9,6 +9,8 @@ var (
 	ErrUserNotFound          = errors.New("user not found")
 	ErrUserAlreadyParticipant = errors.New("user is already a participant")
 	ErrUserIsOwner           = errors.New("user is the owner of this project")
+	ErrProjectNotFound       = errors.New("project not found")
+	ErrTaskNotFound          = errors.New("task not found")
 )
 
 type TaskStatus string

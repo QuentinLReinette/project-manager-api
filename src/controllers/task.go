@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"project-manager/src/middleware"
 	"project-manager/src/models"
@@ -144,7 +145,11 @@ func (c *TaskController) createTask(w http.ResponseWriter, r *http.Request, user
 func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, taskID uint, userID uint) {
 	task, err := c.repo.FindByID(r.Context(), taskID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Task not found")
+		if errors.Is(err, models.ErrTaskNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Task not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve task")
 		return
 	}
 
@@ -198,7 +203,11 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 func (c *TaskController) deleteTask(w http.ResponseWriter, r *http.Request, taskID uint, userID uint) {
 	task, err := c.repo.FindByID(r.Context(), taskID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Task not found")
+		if errors.Is(err, models.ErrTaskNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Task not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve task")
 		return
 	}
 
@@ -218,7 +227,11 @@ func (c *TaskController) deleteTask(w http.ResponseWriter, r *http.Request, task
 func (c *TaskController) getTask(w http.ResponseWriter, r *http.Request, taskID uint, userID uint) {
 	task, err := c.repo.FindByID(r.Context(), taskID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Task not found")
+		if errors.Is(err, models.ErrTaskNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Task not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve task")
 		return
 	}
 

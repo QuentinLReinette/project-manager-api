@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"project-manager/src/models"
 
 	"gorm.io/gorm"
@@ -23,6 +24,9 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 	var user models.User
 	err := r.db.WithContext(ctx).Where("email = ?", email).First(&user).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, models.ErrUserNotFound
+		}
 		return nil, err
 	}
 	return &user, nil
@@ -32,6 +36,9 @@ func (r *UserRepository) FindByID(ctx context.Context, id uint) (*models.User, e
 	var user models.User
 	err := r.db.WithContext(ctx).First(&user, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, models.ErrUserNotFound
+		}
 		return nil, err
 	}
 	return &user, nil

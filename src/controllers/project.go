@@ -122,7 +122,11 @@ func (c *ProjectController) createProject(w http.ResponseWriter, r *http.Request
 func (c *ProjectController) updateProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+		if errors.Is(err, models.ErrProjectNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve project")
 		return
 	}
 
@@ -155,7 +159,11 @@ func (c *ProjectController) updateProject(w http.ResponseWriter, r *http.Request
 func (c *ProjectController) deleteProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+		if errors.Is(err, models.ErrProjectNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve project")
 		return
 	}
 
@@ -174,7 +182,11 @@ func (c *ProjectController) deleteProject(w http.ResponseWriter, r *http.Request
 func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+		if errors.Is(err, models.ErrProjectNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve project")
 		return
 	}
 
@@ -214,7 +226,11 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 func (c *ProjectController) getProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
 	project, err := c.repo.FindByID(r.Context(), projectID)
 	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+		if errors.Is(err, models.ErrProjectNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve project")
 		return
 	}
 

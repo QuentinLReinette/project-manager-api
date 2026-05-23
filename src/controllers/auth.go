@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"project-manager/src/middleware"
@@ -61,9 +62,12 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingUser, err := c.repo.FindByEmail(r.Context(), req.Email)
-	if err == nil && existingUser != nil {
+	_, err := c.repo.FindByEmail(r.Context(), req.Email)
+	if err == nil {
 		utils.WriteError(w, http.StatusConflict, "Email already registered")
+		return
+	} else if !errors.Is(err, models.ErrUserNotFound) {
+		utils.WriteError(w, http.StatusInternalServerError, "Database query failed")
 		return
 	}
 
@@ -122,8 +126,12 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := c.repo.FindByEmail(r.Context(), req.Email)
-	if err != nil || user == nil {
-		utils.WriteError(w, http.StatusUnauthorized, "Invalid email or password")
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			utils.WriteError(w, http.StatusUnauthorized, "Invalid email or password")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to authenticate")
 		return
 	}
 
@@ -175,7 +183,11 @@ func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 
 	user, err := c.repo.FindByID(r.Context(), userID)
 	if err != nil {
-		utils.WriteError(w, http.StatusUnauthorized, "User not found")
+		if errors.Is(err, models.ErrUserNotFound) {
+			utils.WriteError(w, http.StatusUnauthorized, "User profile not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve user profile")
 		return
 	}
 

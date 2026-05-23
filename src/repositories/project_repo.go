@@ -25,6 +25,9 @@ func (r *ProjectRepository) FindByID(ctx context.Context, id uint) (*models.Proj
 	var project models.Project
 	err := r.db.WithContext(ctx).Preload("Owner").Preload("Participants").Preload("Tasks").First(&project, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, models.ErrProjectNotFound
+		}
 		return nil, err
 	}
 	return &project, nil

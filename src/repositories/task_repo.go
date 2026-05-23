@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"project-manager/src/models"
 
 	"gorm.io/gorm"
@@ -23,6 +24,9 @@ func (r *TaskRepository) FindByID(ctx context.Context, id uint) (*models.Task, e
 	var task models.Task
 	err := r.db.WithContext(ctx).Preload("AssignedTo").First(&task, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, models.ErrTaskNotFound
+		}
 		return nil, err
 	}
 	return &task, nil
