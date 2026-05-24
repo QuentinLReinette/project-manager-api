@@ -18,6 +18,7 @@ type ProjectRepoInterface interface {
 	Delete(ctx context.Context, id uint) error
 	AddParticipantByEmail(ctx context.Context, projectID uint, email string) error
 	RemoveParticipant(ctx context.Context, projectID uint, userID uint) error
+	RemoveParticipantByEmail(ctx context.Context, projectID uint, email string) error
 }
 
 type ProjectController struct {
@@ -60,13 +61,17 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// POST /api/projects/{id}/participants
+		// /api/projects/{id}/participants
 		if len(parts) == 4 && parts[3] == "participants" {
-			if r.Method != http.MethodPost {
-				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			if r.Method == http.MethodPost {
+				c.addParticipant(w, r, projectID, userID)
 				return
 			}
-			c.addParticipant(w, r, projectID, userID)
+			if r.Method == http.MethodDelete {
+				c.removeParticipant(w, r, projectID, userID)
+				return
+			}
+			utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
 
@@ -280,4 +285,48 @@ func (c *ProjectController) leaveProject(w http.ResponseWriter, r *http.Request,
 	}
 
 	utils.WriteMessage(w, http.StatusOK, "Successfully left the project")
+}
+
+func (c *ProjectController) removeParticipant(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
+	project, err := c.repo.FindByID(r.Context(), projectID)
+	if err != nil {
+		if errors.Is(err, models.ErrProjectNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve project")
+		return
+	}
+
+	if project.OwnerID != userID {
+		utils.WriteError(w, http.StatusForbidden, "Access denied")
+		return
+	}
+
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Email parameter required")
+		return
+	}
+
+	if err := c.repo.RemoveParticipantByEmail(r.Context(), projectID, req.Email); err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Target user email not registered inside application")
+			return
+		}
+		if errors.Is(err, models.ErrUserIsOwner) {
+			utils.WriteError(w, http.StatusBadRequest, "Owner cannot be removed from the project")
+			return
+		}
+		if errors.Is(err, models.ErrUserNotParticipant) {
+			utils.WriteError(w, http.StatusBadRequest, "User is not a participant of this project")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to remove participant")
+		return
+	}
+
+	utils.WriteMessage(w, http.StatusOK, "Participant successfully removed from project")
 }

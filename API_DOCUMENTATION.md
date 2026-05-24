@@ -34,6 +34,7 @@ The API has full CORS support enabled to support secure credentialed sharing wit
 | **Projects** | PUT    | `/api/projects/{id}`              | Update project title/description                     | Yes (Owner)   |
 | **Projects** | DELETE | `/api/projects/{id}`              | Delete a project workspace                           | Yes (Owner)   |
 | **Projects** | POST   | `/api/projects/{id}/participants` | Add a participant by registered email                | Yes (Owner)   |
+| **Projects** | DELETE | `/api/projects/{id}/participants` | Remove a participant by registered email             | Yes (Owner)   |
 | **Projects** | POST   | `/api/projects/{id}/leave`        | Leave a project workspace                            | Yes (Participant) |
 | **Tasks**    | GET    | `/api/tasks?project_id={id}`      | List all tasks for a project (incl. filter `status`) | Yes (Member)  |
 | **Tasks**    | POST   | `/api/tasks`                      | Create a new task under a project                    | Yes (Member)  |
@@ -314,8 +315,31 @@ The API has full CORS support enabled to support secure credentialed sharing wit
   - **Error Responses:**
     - `400 Bad Request`: Project identifier is invalid, or payload JSON is invalid / missing required fields (`email`).
     - `403 Forbidden`: Access denied (user is not the project Owner).
-    - `404 Not Found`: Project workspace target not found, or the email address is not registered inside the application database.
     - `409 Conflict`: User is already a participant of the project, or user is the owner of the project.
+
+- **Remove Participant (`DELETE /api/projects/{id}/participants`)**
+  - **Description:** Removes a participant from the project by their email.
+  - **Access Control:** Restricted to the project Owner.
+  - **Payload:**
+
+    ```json
+    {
+      "email": "bob@ynov.com"
+    }
+    ```
+
+  - **Response (200 OK):**
+
+    ```json
+    {
+      "message": "Participant successfully removed from project"
+    }
+    ```
+
+  - **Error Responses:**
+    - `400 Bad Request`: Project identifier is invalid, payload JSON is invalid / missing required fields (`email`), target user is the project Owner (who cannot be removed), or target user is not currently a participant of the project.
+    - `403 Forbidden`: Access denied (user is not the project Owner).
+    - `404 Not Found`: Project workspace target not found, or the email address is not registered inside the application database.
 
 - **Leave Project (`POST /api/projects/{id}/leave`)**
   - **Description:** Removes the currently authenticated user from the project's participants list.
