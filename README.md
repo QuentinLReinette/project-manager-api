@@ -89,5 +89,5 @@ For a quick reference of the available endpoints, see below:
 
 - **Auth**: Registration (`POST /api/auth/register`), Login (`POST /api/auth/login`), Profile Info (`GET /api/auth/me`), Logout (`POST /api/auth/logout`)
 - **Users**: Search (`GET /api/users?q={query}`)
-- **Projects**: List (`GET /api/projects`), Create (`POST /api/projects`), Detail (`GET /api/projects/{id}`), Update (`PUT /api/projects/{id}`), Delete (`DELETE /api/projects/{id}`), Add Participant (`POST /api/projects/{id}/participants`)
+- **Projects**: List (`GET /api/projects`), Create (`POST /api/projects`), Detail (`GET /api/projects/{id}`), Update (`PUT /api/projects/{id}`), Delete (`DELETE /api/projects/{id}`), Add Participant (`POST /api/projects/{id}/participants`), Remove Participant (`DELETE /api/projects/{id}/participants`), Leave (`POST /api/projects/{id}/leave`)
 - **Tasks**: List (`GET /api/tasks?project_id={id}`), Create (`POST /api/tasks`), Detail (`GET /api/tasks/{id}`), Update (`PUT /api/tasks/{id}`), Delete (`DELETE /api/tasks/{id}`)
