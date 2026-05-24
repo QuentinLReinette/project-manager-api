@@ -308,7 +308,9 @@ The API has full CORS support enabled to support secure credentialed sharing wit
 
     ```json
     {
-      "message": "Participant successfully attached to project"
+      "id": 7,
+      "name": "Bob Martin",
+      "email": "bob@ynov.com"
     }
     ```
 
