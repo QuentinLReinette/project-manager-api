@@ -17,6 +17,7 @@ type ProjectRepoInterface interface {
 	Update(ctx context.Context, project *models.Project) error
 	Delete(ctx context.Context, id uint) error
 	AddParticipantByEmail(ctx context.Context, projectID uint, email string) error
+	RemoveParticipant(ctx context.Context, projectID uint, userID uint) error
 }
 
 type ProjectController struct {
@@ -66,6 +67,16 @@ func (c *ProjectController) Dispatch(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			c.addParticipant(w, r, projectID, userID)
+			return
+		}
+
+		// POST /api/projects/{id}/leave
+		if len(parts) == 4 && parts[3] == "leave" {
+			if r.Method != http.MethodPost {
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				return
+			}
+			c.leaveProject(w, r, projectID, userID)
 			return
 		}
 
@@ -248,4 +259,25 @@ func (c *ProjectController) getProject(w http.ResponseWriter, r *http.Request, p
 	}
 
 	utils.WriteJSON(w, http.StatusOK, project)
+}
+
+func (c *ProjectController) leaveProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
+	if err := c.repo.RemoveParticipant(r.Context(), projectID, userID); err != nil {
+		if errors.Is(err, models.ErrProjectNotFound) {
+			utils.WriteError(w, http.StatusNotFound, "Project workspace target not found")
+			return
+		}
+		if errors.Is(err, models.ErrUserIsOwner) {
+			utils.WriteError(w, http.StatusBadRequest, "Owner cannot leave the project")
+			return
+		}
+		if errors.Is(err, models.ErrUserNotParticipant) {
+			utils.WriteError(w, http.StatusBadRequest, "User is not a participant of this project")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to leave project")
+		return
+	}
+
+	utils.WriteMessage(w, http.StatusOK, "Successfully left the project")
 }

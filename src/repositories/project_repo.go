@@ -87,3 +87,40 @@ func (r *ProjectRepository) AddParticipantByEmail(ctx context.Context, projectID
 		return tx.Model(&project).Association("Participants").Append(&user)
 	})
 }
+
+func (r *ProjectRepository) RemoveParticipant(ctx context.Context, projectID uint, userID uint) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var project models.Project
+		if err := tx.First(&project, projectID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return models.ErrProjectNotFound
+			}
+			return err
+		}
+
+		var user models.User
+		if err := tx.First(&user, userID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return models.ErrUserNotFound
+			}
+			return err
+		}
+
+		if project.OwnerID == userID {
+			return models.ErrUserIsOwner
+		}
+
+		var count int64
+		err := tx.Table("project_participants").
+			Where("project_id = ? AND user_id = ?", projectID, userID).
+			Count(&count).Error
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return models.ErrUserNotParticipant
+		}
+
+		return tx.Model(&project).Association("Participants").Delete(&user)
+	})
+}
