@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"project-manager/src/middleware"
 	"project-manager/src/models"
@@ -159,6 +160,12 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 		return
 	}
 
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
 	var req struct {
 		Title        string            `json:"title"`
 		Description  string            `json:"description"`
@@ -166,9 +173,20 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 		AssignedToID *uint             `json:"assigned_to_id"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload")
 		return
+	}
+
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal(bodyBytes, &rawMap); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	assignedToIDExists := false
+	if _, ok := rawMap["assigned_to_id"]; ok {
+		assignedToIDExists = true
 	}
 
 	if req.Status != "" {
@@ -179,13 +197,19 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 		task.Status = req.Status
 	}
 
-	if req.AssignedToID != nil {
-		isAssigneeValid, _ := c.repo.IsUserMember(r.Context(), task.ProjectID, *req.AssignedToID)
-		if !isAssigneeValid {
-			utils.WriteError(w, http.StatusUnprocessableEntity, "Assignee must be an active participant of the project")
-			return
+	if assignedToIDExists {
+		if req.AssignedToID != nil {
+			isAssigneeValid, _ := c.repo.IsUserMember(r.Context(), task.ProjectID, *req.AssignedToID)
+			if !isAssigneeValid {
+				utils.WriteError(w, http.StatusUnprocessableEntity, "Assignee must be an active participant of the project")
+				return
+			}
+			task.AssignedToID = req.AssignedToID
+			task.AssignedTo = nil
+		} else {
+			task.AssignedToID = nil
+			task.AssignedTo = nil
 		}
-		task.AssignedToID = req.AssignedToID
 	}
 
 	if req.Title != "" {
@@ -197,6 +221,13 @@ func (c *TaskController) updateTask(w http.ResponseWriter, r *http.Request, task
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update task")
 		return
 	}
+
+	// reload task to fetch populated/new preloaded AssignedTo relation from the db
+	updatedTask, err := c.repo.FindByID(r.Context(), task.ID)
+	if err == nil {
+		task = updatedTask
+	}
+
 	utils.WriteJSON(w, http.StatusOK, task)
 }
 
