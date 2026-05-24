@@ -51,7 +51,14 @@ func (r *ProjectRepository) Update(ctx context.Context, project *models.Project)
 }
 
 func (r *ProjectRepository) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.Project{}, id).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var project models.Project
+		project.ID = id
+		if err := tx.Model(&project).Association("Participants").Clear(); err != nil {
+			return err
+		}
+		return tx.Delete(&models.Project{}, id).Error
+	})
 }
 
 func (r *ProjectRepository) AddParticipantByEmail(ctx context.Context, projectID uint, email string) error {
