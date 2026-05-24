@@ -1,8 +1,17 @@
-# Project Management API
+# Project Manager API
 
-A robust, fully CRUD and REST-compliant backend API for the Project Management application, built with **Go** (Golang), **GORM** (object-relational mapping), and **MySQL**.
+A robust, fully CRUD and REST-compliant backend API for the Project Manager application, built with **Go** (Golang), **GORM** (object-relational mapping), and **MySQL**.
 
-This project was built as part of the recruitment process for the Mentor position at **Lyon Ynov Campus** (Computer Science & Cybersecurity department). It demonstrates professional software engineering standards, clean architecture, and relational persistence.
+---
+
+## Repository Architecture & Integration
+
+This repository is one of two parts that make up the Project Manager application:
+
+- **Backend API (Go)**: [project-manager-api](https://github.com/QuentinLReinette/project-manager-api) - Serves the REST API and handles data persistence.
+- **Frontend Client (React)**: [project-manager-web](https://github.com/QuentinLReinette/project-manager-web) - Renders the collaborative Kanban user interface.
+
+These two repositories communicate via HTTP REST endpoints to form a decoupled client-server architecture.
 
 ---
 
@@ -40,13 +49,11 @@ To run this project, you need the following tools installed:
 
 2. **Configure Environment Variables:**
 
-   A `.env.example` file is provided in the repository. Create a `.env` file at the root:
+   A `.env.example` file is provided in the repository. Create a `.env` file at the root and fill in the required environment variables for database connection and JWT secret:
 
    ```bash
    cp .env.example .env
    ```
-
-   _Note: Ensure the environment values match your docker-compose settings._
 
 3. **Start the API and Database Containers:**
 
@@ -59,6 +66,8 @@ To run this project, you need the following tools installed:
    This command starts:
    - `mysql_db` (service mapping port `3306` inside the private network)
    - `api` (service running Go's Air utility for hot-reloads, mapped to port `8080` on the host)
+
+   _Note: Database migrations run automatically via GORM on startup. No manual database seeding is required. You can register your first account directly from the frontend UI or by sending a `POST` request to `/api/auth/register`._
 
 4. **Verify running status:**
    Check the status of the containers:
