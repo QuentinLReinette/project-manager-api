@@ -61,9 +61,9 @@ func (r *ProjectRepository) Delete(ctx context.Context, id uint) error {
 	})
 }
 
-func (r *ProjectRepository) AddParticipantByEmail(ctx context.Context, projectID uint, email string) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var user models.User
+func (r *ProjectRepository) AddParticipantByEmail(ctx context.Context, projectID uint, email string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("email = ?", email).First(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return models.ErrUserNotFound
@@ -93,6 +93,10 @@ func (r *ProjectRepository) AddParticipantByEmail(ctx context.Context, projectID
 
 		return tx.Model(&project).Association("Participants").Append(&user)
 	})
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (r *ProjectRepository) RemoveParticipant(ctx context.Context, projectID uint, userID uint) error {

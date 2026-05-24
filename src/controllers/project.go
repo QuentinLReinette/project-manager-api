@@ -16,7 +16,7 @@ type ProjectRepoInterface interface {
 	FindAllForUser(ctx context.Context, userID uint) ([]models.Project, error)
 	Update(ctx context.Context, project *models.Project) error
 	Delete(ctx context.Context, id uint) error
-	AddParticipantByEmail(ctx context.Context, projectID uint, email string) error
+	AddParticipantByEmail(ctx context.Context, projectID uint, email string) (*models.User, error)
 	RemoveParticipant(ctx context.Context, projectID uint, userID uint) error
 	RemoveParticipantByEmail(ctx context.Context, projectID uint, email string) error
 }
@@ -219,7 +219,8 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := c.repo.AddParticipantByEmail(r.Context(), projectID, req.Email); err != nil {
+	user, err := c.repo.AddParticipantByEmail(r.Context(), projectID, req.Email)
+	if err != nil {
 		if errors.Is(err, models.ErrUserAlreadyParticipant) {
 			utils.WriteError(w, http.StatusConflict, "User is already a participant of this project")
 			return
@@ -236,7 +237,7 @@ func (c *ProjectController) addParticipant(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	utils.WriteMessage(w, http.StatusOK, "Participant successfully attached to project")
+	utils.WriteJSON(w, http.StatusOK, user)
 }
 
 func (c *ProjectController) getProject(w http.ResponseWriter, r *http.Request, projectID uint, userID uint) {
